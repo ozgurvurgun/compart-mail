@@ -1,5 +1,5 @@
 {
-  "$schema": "../node_modules/wrangler/config-schema.json",
+  "$schema": "node_modules/wrangler/config-schema.json",
   "name": "compart-mail",
   "compatibility_date": "2026-08-14",
   "account_id": "08d6ee75890a687e032ba5439dd5e1ae",

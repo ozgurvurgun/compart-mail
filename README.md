@@ -4,6 +4,11 @@ Self-hosted webmail on Cloudflare. Inbound mail hits a Worker through Email Rout
 
 The UI is a React SPA. **Sign-in is Cloudflare Access** (same model as Shortena Mail). There is no in-app email/password login.
 
+**Repo:** [ozgurvurgun/compart-mail](https://github.com/ozgurvurgun/compart-mail)  
+**Live:** [mail.compartsoftware.com](https://mail.compartsoftware.com)
+
+Push to `main` deploys Compart Mail via GitHub Actions. Add repository secret `CLOUDFLARE_API_TOKEN` (Workers + D1 + KV + R2 edit). Shortena will use the same repo later as a second Wrangler environment.
+
 ## Architecture
 
 ```
