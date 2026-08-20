@@ -1,0 +1,6 @@
+.vapid.json
+dist
+node_modules
+.wrangler
+*.tsbuildinfo
+.DS_Store
