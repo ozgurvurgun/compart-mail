@@ -9,8 +9,6 @@ The UI is a React SPA. **Sign-in is Cloudflare Access only.** There is no in-app
 | Repo | [github.com/ozgurvurgun/compart-mail](https://github.com/ozgurvurgun/compart-mail) |
 | Live | [mail.compartsoftware.com](https://mail.compartsoftware.com) |
 | Worker | `compart-mail` |
-| Account | `08d6ee75890a687e032ba5439dd5e1ae` (`compartsoftware35@gmail.com`) |
-| Access team | `morning-snowflake-05e9.cloudflareaccess.com` |
 
 ## Day to day
 
@@ -59,7 +57,7 @@ Name: `compart-mail-deploy`
 | Account | Account Settings | Read |
 | Zone | Workers Routes | Edit |
 
-- **Account Resources:** Include → `Compartsoftware35@gmail.com's Account`
+- **Account Resources:** Include → the Cloudflare account that owns worker `compart-mail`
 - **Zone Resources:** Include → Specific zone → `compartsoftware.com`
 - Leave **IP filtering** and **TTL** empty (GitHub Actions IPs change)
 
@@ -106,13 +104,13 @@ Dashboard: **Zero Trust → Access → Applications**
 5. **Policy** (this is identity, not the hostname):
    - Action: Allow
    - Include selector: **Emails** (or Emails ending in)
-   - Value: the people who may open the panel (e.g. `compartsoftware35@gmail.com`)
+   - Value: the people who may open the panel (their login emails)
    - A selector of just `mail` matches nobody
 6. Save
 
 Then copy into `wrangler.jsonc` `vars`:
 
-- `CF_ACCESS_TEAM_DOMAIN` — e.g. `morning-snowflake-05e9.cloudflareaccess.com`
+- `CF_ACCESS_TEAM_DOMAIN` — `<team>.cloudflareaccess.com`
 - `CF_ACCESS_AUD` — Application Audience tag on the app overview
 
 If AUD is missing, open a private window at `https://mail.compartsoftware.com`. The Access login URL query `kid=` **is** the AUD.
