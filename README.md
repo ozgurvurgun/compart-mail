@@ -1,13 +1,73 @@
 # Compart Mail
 
-Self-hosted webmail on Cloudflare. Inbound mail hits a Worker through Email Routing. Metadata lives in D1. Bodies and attachments live in R2. Sessions and hot counters live in KV. Outbound mail uses the Email Sending binding.
+Self-hosted webmail on Cloudflare. Inbound mail hits a Worker through Email Routing. Metadata lives in D1. Bodies and attachments live in R2. Hot lists live in KV. Outbound mail uses the Email Sending binding.
 
-The UI is a React SPA. **Sign-in is Cloudflare Access** (same model as Shortena Mail). There is no in-app email/password login.
+The UI is a React SPA. **Sign-in is Cloudflare Access only.** There is no in-app email/password login.
 
-**Repo:** [ozgurvurgun/compart-mail](https://github.com/ozgurvurgun/compart-mail)  
-**Live:** [mail.compartsoftware.com](https://mail.compartsoftware.com)
+| | |
+| --- | --- |
+| Repo | [github.com/ozgurvurgun/compart-mail](https://github.com/ozgurvurgun/compart-mail) |
+| Live | [mail.compartsoftware.com](https://mail.compartsoftware.com) |
+| Worker | `compart-mail` |
+| Account | `08d6ee75890a687e032ba5439dd5e1ae` (`compartsoftware35@gmail.com`) |
+| Access team | `morning-snowflake-05e9.cloudflareaccess.com` |
 
-Push to `main` deploys Compart Mail via GitHub Actions. Add repository secret `CLOUDFLARE_API_TOKEN` (Workers + D1 + KV + R2 edit). Shortena will use the same repo later as a second Wrangler environment.
+## Day to day
+
+This folder **is** the git repo. `main` is the source of truth.
+
+```bash
+git clone git@github.com:ozgurvurgun/compart-mail.git
+cd compart-mail
+npm ci
+```
+
+On this machine the SSH host alias `github.com-ozgurvurgun` is required (plain `github.com` uses another GitHub account):
+
+```bash
+git remote -v
+# origin  git@github.com-ozgurvurgun:ozgurvurgun/compart-mail.git
+```
+
+Push to `main` → GitHub Actions builds and deploys `mail.compartsoftware.com`. You can also run **Actions → Deploy → Run workflow**.
+
+Do not commit `.vapid.json`, `tokenn.txt`, `node_modules`, or `dist`.
+
+## GitHub Actions (production deploy)
+
+Workflow: `.github/workflows/deploy.yml`
+
+1. Checkout, Node 22, `npm ci`, `npm run build`
+2. `wrangler deploy` via `cloudflare/wrangler-action@v4`
+
+### Secret
+
+Repo → **Settings → Secrets and variables → Actions** → `CLOUDFLARE_API_TOKEN`
+
+A Shortena SaaS/SSL token is **not** enough (zone SSL only). Create a dedicated token:
+
+**Cloudflare → My Profile → API Tokens → Create Token → Custom token**
+
+Name: `compart-mail-deploy`
+
+| Scope | Resource | Access |
+| --- | --- | --- |
+| Account | Workers Scripts | Edit |
+| Account | Workers KV Storage | Edit |
+| Account | Workers R2 Storage | Edit |
+| Account | D1 | Edit |
+| Account | Account Settings | Read |
+| Zone | Workers Routes | Edit |
+
+- **Account Resources:** Include → `Compartsoftware35@gmail.com's Account`
+- **Zone Resources:** Include → Specific zone → `compartsoftware.com`
+- Leave **IP filtering** and **TTL** empty (GitHub Actions IPs change)
+
+Without **Zone → Workers Routes → Edit**, the worker uploads and then fails with `Authentication error [code: 10000]` on `/zones/.../workers/routes`.
+
+Paste the token only into the GitHub secret. Never into `wrangler.jsonc`, chat, or a committed file.
+
+`VAPID_PRIVATE_KEY` is a **Wrangler secret on the worker**, not a GitHub secret. CI deploy does not overwrite it.
 
 ## Architecture
 
@@ -27,127 +87,122 @@ Worker  fetch()  -->  KV mailbox list, unread counts
 
 | Binding | Role |
 | --- | --- |
-| D1 | Mailboxes, messages, FTS5 search, contacts, push subscriptions |
+| D1 `compart-mail` | Mailboxes, messages, FTS5, contacts, push subscriptions |
 | KV | Mailbox list, unread counts |
-| R2 | RFC822, HTML, text bodies, attachments |
-| send_email | Outbound SMTP via Cloudflare |
-| Assets | Built SPA |
+| R2 `compart-mail` | RFC822, HTML, text, attachments |
+| send_email | Outbound via Cloudflare |
+| Assets | Built SPA (`dist/`) |
 
-## Access setup
+`workers_dev` and `preview_urls` stay **false** so Access cannot be skipped on `*.workers.dev`. The worker only serves `mail.compartsoftware.com`.
 
-1. Zero Trust → Access → Applications → Add an application → Self-hosted
-2. Hostname: `mail.compartsoftware.com`
-3. Policy: the people who may open the mail panel
-4. Copy the application **AUD** into `wrangler.jsonc` as `vars.CF_ACCESS_AUD`
-5. Set `vars.CF_ACCESS_TEAM_DOMAIN` to your team host (`<team>.cloudflareaccess.com`)
-6. Keep `workers_dev` and `preview_urls` false so Access cannot be bypassed on `*.workers.dev`
+## Cloudflare Access
 
-Then deploy:
+Dashboard: **Zero Trust → Access → Applications**
 
-```bash
-npm run deploy
-```
+1. **Add an application → Self-hosted**
+2. Name: e.g. `mail`
+3. Application domain: subdomain `mail` + `compartsoftware.com` → `mail.compartsoftware.com`
+4. Session duration: 8–24 hours
+5. **Policy** (this is identity, not the hostname):
+   - Action: Allow
+   - Include selector: **Emails** (or Emails ending in)
+   - Value: the people who may open the panel (e.g. `compartsoftware35@gmail.com`)
+   - A selector of just `mail` matches nobody
+6. Save
 
-## What you need
+Then copy into `wrangler.jsonc` `vars`:
 
-- A Cloudflare account with Workers, D1, KV, R2, Email Routing, and Zero Trust
-- `compartsoftware.com` on Cloudflare DNS
-- Node 20+
-- Wrangler 4.x (`npm i` in this folder)
+- `CF_ACCESS_TEAM_DOMAIN` — e.g. `morning-snowflake-05e9.cloudflareaccess.com`
+- `CF_ACCESS_AUD` — Application Audience tag on the app overview
 
-## 1. Clone and configure
+If AUD is missing, open a private window at `https://mail.compartsoftware.com`. The Access login URL query `kid=` **is** the AUD.
 
-```bash
-cd mail
-npm install
-```
+Logout goes to `/cdn-cgi/access/logout`. `run_worker_first` intercepts `/cdn-cgi/access/*` and redirects to the team host.
 
-Edit `wrangler.jsonc`:
+After Access + worker vars are set, a private window should: Access login → mail panel (no password screen).
 
-- `name`: worker name
-- `account_id`: Cloudflare account id
-- `routes`: `mail.compartsoftware.com`
-- `vars.MAIL_DOMAIN`: `compartsoftware.com`
-- `vars.SEED_MAILBOXES`: comma list of local parts (`hello,contact,info,support`)
-- `send_email.allowed_sender_addresses`: those same addresses
-- `vars.CF_ACCESS_TEAM_DOMAIN` / `vars.CF_ACCESS_AUD`: from the Access app above
+## First-time Cloudflare resources
 
-## 2. Create D1, KV, R2
+Already created for production. Recreate only on a new account:
 
 ```bash
+npm ci
 npx wrangler d1 create compart-mail
 npx wrangler kv namespace create KV
 npx wrangler r2 bucket create compart-mail
 ```
 
-Paste the printed `database_id` and KV `id` into `wrangler.jsonc`.
+Paste `database_id` and KV `id` into `wrangler.jsonc`. Set `account_id`, `routes`, `MAIL_DOMAIN`, `SEED_MAILBOXES`, `allowed_sender_addresses`, Access vars, VAPID public key.
 
-Apply schema:
-
-```bash
-npx wrangler d1 execute compart-mail --remote --file=./schema.sql
-npx wrangler d1 execute compart-mail --remote --file=./schema-auth.sql
-npx wrangler d1 execute compart-mail --remote --file=./schema-perf.sql
-npx wrangler d1 execute compart-mail --remote --file=./schema-contacts.sql
-npx wrangler d1 execute compart-mail --remote --file=./schema-push.sql
-```
-
-## 3. Email Routing and Sending
-
-In the Cloudflare dashboard for `MAIL_DOMAIN`:
-
-1. Email Routing: enable, add MX and SPF as prompted.
-2. Add a destination Worker `compart-mail`.
-3. Catch-all cannot target a Worker. Add one rule per inbox address (`hello@`, `contact@`, ...) action: Send to Worker.
-4. Email Sending: enable for the same apex. Add the DKIM / bounce records Cloudflare shows.
-5. Restrict `allowed_sender_addresses` in `wrangler.jsonc` to those inboxes.
-
-## 4. Custom domain and deploy
-
-```bash
-npm run deploy
-```
-
-Point `mail.compartsoftware.com` as a Worker custom domain (already in `routes` if you set `custom_domain: true`).
-
-Open the host, sign in through Access, send a test to `hello@compartsoftware.com`.
-
-## Local notes
-
-```bash
-npm run dev          # Vite UI only. Worker APIs need wrangler.
-npx wrangler dev     # Worker + bindings. Run npm run build first for assets.
-```
-
-D1 local vs remote: always pass `--remote` for production data.
-
-## Security model
-
-- Cloudflare Access JWT (`CF-Access-Jwt-Assertion` / `CF_Authorization`)
-- Worker only accepts `mail.compartsoftware.com` (`workers_dev` off)
-- Mutating requests require a matching Origin
-- API responses: `Cache-Control: private, no-store`
-- CSP, HSTS, frame deny, nosniff on every response
-- Attachment filenames sanitized before `Content-Disposition`
-
-## Layout
-
-- `src/domain`: addresses, folders, messages
-- `src/application`: use cases and ports
-- `src/infrastructure`: D1, KV, R2, Email, HTTP, Access
-- `src/ui`: React client
-- `src/worker.ts`: composition root (`fetch` + `email`)
-
-## Ops
+Schema (production always `--remote`):
 
 ```bash
 npm run db:migrate
 npm run db:migrate-auth
-npx wrangler d1 execute compart-mail --remote --file=./schema-perf.sql
+npm run db:migrate-perf
+npm run db:migrate-contacts
+npm run db:migrate-push
+```
+
+## Email Routing and Sending
+
+Cloudflare dashboard for `compartsoftware.com`:
+
+1. **Email Routing:** enable; add MX and SPF as prompted.
+2. Destination worker: `compart-mail`.
+3. Catch-all **cannot** target a Worker. One rule per inbox: `hello@`, `contact@`, `info@`, `support@` → Send to Worker.
+4. **Email Sending:** enable for the same apex. Add DKIM / bounce records Cloudflare shows.
+5. Keep `send_email.allowed_sender_addresses` in `wrangler.jsonc` equal to those inboxes.
+
+Test: Access sign-in, then send mail to `hello@compartsoftware.com`.
+
+## Web Push (VAPID)
+
+Public key lives in `wrangler.jsonc` as `VAPID_PUBLIC_KEY`. Private key is a worker secret:
+
+```bash
+npx wrangler secret put VAPID_PRIVATE_KEY
+```
+
+Generate a new pair (writes gitignored `.vapid.json`):
+
+```bash
+node scripts/generate-vapid.mjs
+```
+
+Put the public key in `vars.VAPID_PUBLIC_KEY` and `VAPID_SUBJECT` (`mailto:hello@compartsoftware.com`). Put only the private key into the Wrangler secret.
+
+## Local
+
+```bash
+npm ci
+npm run dev          # Vite UI only. APIs need the Worker.
+npm run build
+npx wrangler dev     # Worker + bindings; build first so `dist/` exists
+npm run deploy       # local build + wrangler deploy (same as CI, uses your login/token)
 npx wrangler tail
 ```
 
-Observability is on in `wrangler.jsonc`.
+D1: production data needs `--remote`. `npm run db:migrate*` already pass `--remote`.
+
+## Security
+
+- Cloudflare Access JWT (`CF-Access-Jwt-Assertion` / `CF_Authorization`)
+- Hostname allow-list: `mail.compartsoftware.com` only
+- Mutating requests require matching `Origin`
+- API: `Cache-Control: private, no-store`
+- CSP, HSTS, frame deny, nosniff
+- HTML bodies render in a sandboxed iframe (`allow-same-origin`, no scripts); height is measured from the document so marketing mail is not clipped
+- Attachment filenames sanitized before `Content-Disposition`
+
+## Layout
+
+- `src/domain` — addresses, folders, messages
+- `src/application` — use cases and ports
+- `src/infrastructure` — D1, KV, R2, Email, HTTP, Access
+- `src/ui` — React client
+- `src/worker.ts` — `fetch` + `email` composition root
+- `.github/workflows/deploy.yml` — production deploy
 
 ## License
 
