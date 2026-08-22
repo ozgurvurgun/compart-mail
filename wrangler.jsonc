@@ -48,6 +48,7 @@
   ],
   "vars": {
     "MAIL_DOMAIN": "compartsoftware.com",
+    "MAIL_HOSTNAME": "mail.compartsoftware.com",
     "SEED_MAILBOXES": "hello,contact,info,support",
     "APP_NAME": "Compart Mail",
     "FROM_DISPLAY_NAME": "Compart Software",
@@ -58,5 +59,59 @@
   },
   "observability": {
     "enabled": true
+  },
+  "env": {
+    "shortena": {
+      "name": "shortena-mail",
+      "workers_dev": false,
+      "preview_urls": false,
+      "routes": [
+        { "pattern": "mail.shortena.com", "custom_domain": true }
+      ],
+      "d1_databases": [
+        {
+          "binding": "DB",
+          "database_name": "shortena-mail",
+          "database_id": "7c4795ec-1ad2-474e-bcb5-f18ca1bbb963"
+        }
+      ],
+      "kv_namespaces": [
+        {
+          "binding": "KV",
+          "id": "d924db3c7ce946558e566b46fe82935a"
+        }
+      ],
+      "r2_buckets": [
+        {
+          "binding": "BUCKET",
+          "bucket_name": "shortena-mail"
+        }
+      ],
+      "send_email": [
+        {
+          "name": "EMAIL",
+          "allowed_sender_addresses": [
+            "support@shortena.com",
+            "abuse@shortena.com",
+            "security@shortena.com",
+            "billing@shortena.com",
+            "privacy@shortena.com",
+            "legal@shortena.com",
+            "postmaster@shortena.com"
+          ]
+        }
+      ],
+      "vars": {
+        "MAIL_DOMAIN": "shortena.com",
+        "MAIL_HOSTNAME": "mail.shortena.com",
+        "SEED_MAILBOXES": "support,abuse,security,billing,privacy,legal,postmaster",
+        "APP_NAME": "Shortena Mail",
+        "FROM_DISPLAY_NAME": "Shortena",
+        "CF_ACCESS_TEAM_DOMAIN": "morning-snowflake-05e9.cloudflareaccess.com",
+        "CF_ACCESS_AUD": "328c2ea92c26e91e1c46491c6d6a9d14a40c7e9f84a90b816d213f2f4b78c074",
+        "VAPID_PUBLIC_KEY": "BFQTWHPOG234RDBihs3JtSOgD6g6WpQzVReu_QTnH37cVUcTjyL1fwXbu-cu7awI3Acw5WiYeIj3s3UMlxRmx7s",
+        "VAPID_SUBJECT": "mailto:support@shortena.com"
+      }
+    }
   }
 }

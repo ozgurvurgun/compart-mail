@@ -7,8 +7,8 @@ The UI is a React SPA. **Sign-in is Cloudflare Access only.** There is no in-app
 | | |
 | --- | --- |
 | Repo | [github.com/ozgurvurgun/compart-mail](https://github.com/ozgurvurgun/compart-mail) |
-| Live | [mail.compartsoftware.com](https://mail.compartsoftware.com) |
-| Worker | `compart-mail` |
+| Compart | [mail.compartsoftware.com](https://mail.compartsoftware.com) (`compart-mail`) |
+| Shortena | [mail.shortena.com](https://mail.shortena.com) (`shortena-mail`, `wrangler` env `shortena`) |
 
 ## Day to day
 
@@ -27,7 +27,7 @@ git remote -v
 # origin  git@github.com-ozgurvurgun:ozgurvurgun/compart-mail.git
 ```
 
-Push to `main` → GitHub Actions builds and deploys `mail.compartsoftware.com`. You can also run **Actions → Deploy → Run workflow**.
+Push to `main` → GitHub Actions builds once per job and deploys **both** `mail.compartsoftware.com` and `mail.shortena.com`. Same source, two `wrangler` environments. Local Shortena deploy: `npm run deploy:shortena`.
 
 Do not commit `.vapid.json`, `tokenn.txt`, `node_modules`, or `dist`.
 
@@ -35,18 +35,18 @@ Do not commit `.vapid.json`, `tokenn.txt`, `node_modules`, or `dist`.
 
 Workflow: `.github/workflows/deploy.yml`
 
-1. Checkout, Node 22, `npm ci`, `npm run build`
-2. `wrangler deploy` via `cloudflare/wrangler-action@v4`
+Two jobs: `wrangler deploy` (Compart) and `wrangler deploy --env shortena`. Each job runs `npm ci` + `npm run build`.
 
-### Secret
+### Secrets
 
-Repo → **Settings → Secrets and variables → Actions** → `CLOUDFLARE_API_TOKEN`
+Repo → **Settings → Secrets and variables → Actions**
 
-A Shortena SaaS/SSL token is **not** enough (zone SSL only). Create a dedicated token:
+| Secret | Used for |
+| --- | --- |
+| `CLOUDFLARE_API_TOKEN` | Compart, and Shortena if the other secret is empty |
+| `CLOUDFLARE_API_TOKEN_SHORTENA` | Optional. Use if `shortena.com` needs a different token |
 
-**Cloudflare → My Profile → API Tokens → Create Token → Custom token**
-
-Name: `compart-mail-deploy`
+A Shortena SaaS/SSL token is **not** enough (zone SSL only). Token needs:
 
 | Scope | Resource | Access |
 | --- | --- | --- |
@@ -57,15 +57,15 @@ Name: `compart-mail-deploy`
 | Account | Account Settings | Read |
 | Zone | Workers Routes | Edit |
 
-- **Account Resources:** Include → the Cloudflare account that owns worker `compart-mail`
-- **Zone Resources:** Include → Specific zone → `compartsoftware.com`
+- **Account Resources:** Include → the account that owns `compart-mail` / `shortena-mail`
+- **Zone Resources:** Include `compartsoftware.com` (Compart job). For one token doing both, also include `shortena.com`
 - Leave **IP filtering** and **TTL** empty (GitHub Actions IPs change)
 
 Without **Zone → Workers Routes → Edit**, the worker uploads and then fails with `Authentication error [code: 10000]` on `/zones/.../workers/routes`.
 
-Paste the token only into the GitHub secret. Never into `wrangler.jsonc`, chat, or a committed file.
+Paste tokens only into GitHub secrets. Never into `wrangler.jsonc`, chat, or a committed file.
 
-`VAPID_PRIVATE_KEY` is a **Wrangler secret on the worker**, not a GitHub secret. CI deploy does not overwrite it.
+`VAPID_PRIVATE_KEY` is a **Wrangler secret on each worker**, not a GitHub secret. CI deploy does not overwrite it. Set it once per worker (`compart-mail` and `shortena-mail`).
 
 ## Architecture
 
@@ -91,7 +91,7 @@ Worker  fetch()  -->  KV mailbox list, unread counts
 | send_email | Outbound via Cloudflare |
 | Assets | Built SPA (`dist/`) |
 
-`workers_dev` and `preview_urls` stay **false** so Access cannot be skipped on `*.workers.dev`. The worker only serves `mail.compartsoftware.com`.
+`workers_dev` and `preview_urls` stay **false** so Access cannot be skipped on `*.workers.dev`. Default env serves `mail.compartsoftware.com`. `--env shortena` serves `mail.shortena.com`. Hostname comes from `MAIL_HOSTNAME` / `MAIL_DOMAIN`.
 
 ## Cloudflare Access
 

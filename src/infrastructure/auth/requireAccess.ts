@@ -1,6 +1,8 @@
 import type { AccessAuthenticator } from "./AccessAuthenticator";
 
-export const MAIL_HOSTNAME = "mail.compartsoftware.com";
+export function mailHostname(env: { MAIL_HOSTNAME?: string; MAIL_DOMAIN: string }): string {
+  return env.MAIL_HOSTNAME || `mail.${env.MAIL_DOMAIN}`;
+}
 
 const PUBLIC_ASSETS = new Set([
   "/manifest.webmanifest",
@@ -10,8 +12,8 @@ const PUBLIC_ASSETS = new Set([
   "/theme-boot.js",
 ]);
 
-export function isAllowedHostname(hostname: string): boolean {
-  return hostname === MAIL_HOSTNAME;
+export function isAllowedHostname(hostname: string, allowed: string): boolean {
+  return hostname === allowed;
 }
 
 /** PWA / chrome fetches these without Access cookies; do not gate them. */

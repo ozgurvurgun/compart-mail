@@ -1,4 +1,4 @@
-import { MAIL_ORIGIN, signOutOfAccess } from "./access";
+import { currentOrigin, signOutOfAccess } from "./access";
 
 export function AccessProblem({ misconfigured }: { misconfigured?: boolean }) {
   return (
@@ -8,7 +8,7 @@ export function AccessProblem({ misconfigured }: { misconfigured?: boolean }) {
         <h1 className="mt-3 text-[22px] font-semibold text-ink">Cloudflare Access required</h1>
         <p className="mt-3 text-[14px] leading-6 text-muted">
           {misconfigured
-            ? "Access is not configured on this worker. Set CF_ACCESS_TEAM_DOMAIN and CF_ACCESS_AUD, then protect mail.compartsoftware.com in Zero Trust."
+            ? "Access is not configured on this worker. Set CF_ACCESS_TEAM_DOMAIN and CF_ACCESS_AUD, then protect this hostname in Zero Trust."
             : "Sign in through Cloudflare Access to open the mail panel. If you already did, try again or sign out of Access first."}
         </p>
         <div className="mt-6 flex flex-col gap-2">
@@ -19,7 +19,7 @@ export function AccessProblem({ misconfigured }: { misconfigured?: boolean }) {
             <button
               type="button"
               className="btn-secondary w-full justify-center"
-              onClick={() => signOutOfAccess(`${MAIL_ORIGIN}/`)}
+              onClick={() => signOutOfAccess(`${currentOrigin()}/`)}
             >
               Sign out of Access
             </button>

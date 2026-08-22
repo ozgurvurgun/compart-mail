@@ -14,7 +14,7 @@ import { AttachmentGallery } from "./AttachmentGallery";
 import { ConfirmDialog } from "./ConfirmDialog";
 import DOMPurify from "dompurify";
 import { AccessProblem } from "./AccessProblem";
-import { MAIL_ORIGIN, signOutOfAccess } from "./access";
+import { currentOrigin, signOutOfAccess } from "./access";
 import { CompartSeal } from "./CompartSeal";
 import { ProfileMenu } from "./ProfileMenu";
 import { Logo } from "./Logo";
@@ -257,7 +257,7 @@ export function App() {
   function signOut() {
     setSession(null);
     setPending(null);
-    signOutOfAccess(`${MAIL_ORIGIN}/`);
+    signOutOfAccess(`${currentOrigin()}/`);
   }
 
   if (loading) {

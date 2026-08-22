@@ -1,6 +1,6 @@
 import { MailApplication } from "./application/MailApplication";
 import { AccessAuthenticator } from "./infrastructure/auth/AccessAuthenticator";
-import { isAllowedHostname, isPublicAsset, requireAccessIdentity } from "./infrastructure/auth/requireAccess";
+import { isAllowedHostname, isPublicAsset, mailHostname, requireAccessIdentity } from "./infrastructure/auth/requireAccess";
 import { KvCache } from "./infrastructure/cache/KvCache";
 import { CloudflareEmailSender } from "./infrastructure/email/CloudflareEmailSender";
 import { handleApi } from "./infrastructure/http/handleApi";
@@ -20,6 +20,7 @@ export type Env = {
   EMAIL: ConstructorParameters<typeof CloudflareEmailSender>[0];
   ASSETS: { fetch: (request: Request) => Promise<Response> };
   MAIL_DOMAIN: string;
+  MAIL_HOSTNAME?: string;
   SEED_MAILBOXES: string;
   APP_NAME: string;
   FROM_DISPLAY_NAME?: string;
@@ -66,7 +67,7 @@ export default {
   async fetch(request: Request, env: Env, ctx: ExecutionContext): Promise<Response> {
     const url = new URL(request.url);
 
-    if (!isAllowedHostname(url.hostname)) {
+    if (!isAllowedHostname(url.hostname, mailHostname(env))) {
       return new Response("Not found", { status: 404 });
     }
 
