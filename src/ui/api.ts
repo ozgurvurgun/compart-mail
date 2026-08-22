@@ -1,8 +1,11 @@
+export const ALL_MAILBOX = "all";
+
 export type Mailbox = { address: string; displayName: string };
 
 export type Session = {
   identity: { email: string; name?: string };
   appName: string;
+  fromDisplayName: string;
   domain: string;
   mailboxes: Mailbox[];
 };
@@ -88,6 +91,14 @@ export function formatWhen(ms: number) {
     : date.toLocaleDateString([], { month: "short", day: "numeric" });
 }
 
-export function displayName(from: { address: string; name: string }) {
-  return from.name || from.address;
+export function displayName(
+  from: { address: string; name: string },
+  opts?: { fromDisplayName?: string; domain?: string },
+) {
+  const [local = "", host = ""] = from.address.split("@");
+  const name = (from.name || "").trim();
+  const ours = Boolean(opts?.domain && host.toLowerCase() === opts.domain.toLowerCase());
+  const nameIsLocal = !name || name.toLowerCase() === local.toLowerCase();
+  if (ours && nameIsLocal && opts?.fromDisplayName) return opts.fromDisplayName;
+  return name || from.address;
 }

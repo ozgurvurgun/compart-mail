@@ -45,8 +45,12 @@ export class D1MessageRepository implements MessageRepository {
   async list(query: MessageListQuery): Promise<{ items: MessageListItem[]; nextCursor: string | null }> {
     const limit = Math.min(Math.max(query.limit, 1), 50);
     const cursor = decodeCursor(query.cursor);
-    const params: unknown[] = [query.mailbox.value];
-    let where = `mailbox = ?`;
+    const params: unknown[] = [];
+    let where = "1 = 1";
+    if (query.mailbox) {
+      where = "mailbox = ?";
+      params.push(query.mailbox.value);
+    }
 
     if (query.folder === "starred") {
       where += ` AND starred = 1 AND folder NOT IN ('trash', 'spam')`;
@@ -100,13 +104,15 @@ export class D1MessageRepository implements MessageRepository {
     };
   }
 
-  async counts(mailbox: EmailAddress): Promise<Record<string, number>> {
+  async counts(mailbox?: EmailAddress): Promise<Record<string, number>> {
+    const scoped = mailbox ? "WHERE mailbox = ?" : "";
+    const binds = mailbox ? [mailbox.value] : [];
     const rows = await this.db
       .prepare(
         `SELECT folder, SUM(unread) as unread, COUNT(*) as total
-         FROM messages WHERE mailbox = ? GROUP BY folder`,
+         FROM messages ${scoped} GROUP BY folder`,
       )
-      .bind(mailbox.value)
+      .bind(...binds)
       .all<{ folder: string; unread: number; total: number }>();
     const out: Record<string, number> = {};
     for (const row of rows.results ?? []) {
@@ -115,9 +121,9 @@ export class D1MessageRepository implements MessageRepository {
     }
     const starred = await this.db
       .prepare(
-        `SELECT COUNT(*) as n FROM messages WHERE mailbox = ? AND starred = 1 AND folder NOT IN ('trash', 'spam')`,
+        `SELECT COUNT(*) as n FROM messages ${mailbox ? "WHERE mailbox = ? AND" : "WHERE"} starred = 1 AND folder NOT IN ('trash', 'spam')`,
       )
-      .bind(mailbox.value)
+      .bind(...binds)
       .first<{ n: number }>();
     out["starred:total"] = Number(starred?.n ?? 0);
     return out;

@@ -1,5 +1,6 @@
 import { type ReactNode, useEffect, useMemo, useRef, useState } from "react";
 import {
+  ALL_MAILBOX,
   api,
   displayName,
   formatWhen,
@@ -50,7 +51,13 @@ function readSavedMailbox() {
 }
 
 function pickMailbox(mailboxes: Array<{ address: string }>, preferred = readSavedMailbox()) {
+  if (preferred === ALL_MAILBOX) return ALL_MAILBOX;
   if (preferred && mailboxes.some((box) => box.address === preferred)) return preferred;
+  return mailboxes[0]?.address || "";
+}
+
+function composeMailbox(mailbox: string, mailboxes: Array<{ address: string }>) {
+  if (mailbox !== ALL_MAILBOX && mailboxes.some((box) => box.address === mailbox)) return mailbox;
   return mailboxes[0]?.address || "";
 }
 
@@ -358,11 +365,14 @@ export function App() {
                 setPicked([]);
                 setDrawerOpen(false);
               }}
-              options={session.mailboxes.map((box) => ({
-                value: box.address,
-                label: box.displayName || box.address.split("@")[0],
-                hint: box.address,
-              }))}
+              options={[
+                { value: ALL_MAILBOX, label: "All", hint: session.domain },
+                ...session.mailboxes.map((box) => ({
+                  value: box.address,
+                  label: box.displayName || box.address.split("@")[0],
+                  hint: box.address,
+                })),
+              ]}
             />
           </div>
           <nav className="min-h-0 flex-1 space-y-0.5 overflow-y-auto px-2">
@@ -495,7 +505,7 @@ export function App() {
                     <div className={`flex w-10 shrink-0 justify-center ${density === "compact" ? "pt-2" : "pt-2.5"}`}>
                       <CheckBox
                         checked={checked}
-                        label={`Select ${displayName(item.from)}`}
+                        label={`Select ${displayName(item.from, { fromDisplayName: session.fromDisplayName, domain: session.domain })}`}
                         onChange={(next) => {
                           setPicked((prev) =>
                             next ? [...prev, item.id] : prev.filter((id) => id !== item.id),
@@ -540,7 +550,12 @@ export function App() {
                           ? item.to[0]
                             ? displayName(item.to[0])
                             : "No Recipient"
-                          : displayName(item.from)}
+                          : displayName(item.from, { fromDisplayName: session.fromDisplayName, domain: session.domain })}
+                          {mailbox === ALL_MAILBOX ? (
+                            <span className="shrink-0 text-[12px] font-normal text-muted">
+                              {mailboxAddress(item.mailbox).split("@")[0]}
+                            </span>
+                          ) : null}
                         </p>
                         <span className="shrink-0 text-[13px] tabular-nums text-muted">{formatWhen(item.dateMs)}</span>
                       </div>
@@ -658,7 +673,7 @@ export function App() {
                   {detail.subject || "No Subject"}
                 </h1>
                 <p className="mt-1.5 text-[15px] text-ink">
-                  {displayName(detail.from)}
+                  {displayName(detail.from, { fromDisplayName: session.fromDisplayName, domain: session.domain })}
                   <span className="text-muted"> · {detail.from.address}</span>
                 </p>
                 <p className="mt-0.5 text-[13px] text-muted">
@@ -735,7 +750,7 @@ export function App() {
       {composeOpen ? (
         <Compose
           key={editingDraft?.id || reply?.id || composeTo || "new"}
-          from={editingDraft ? mailboxAddress(editingDraft.mailbox) : mailbox}
+          from={editingDraft ? mailboxAddress(editingDraft.mailbox) : composeMailbox(mailbox, session.mailboxes)}
           mailboxes={session.mailboxes.map((box) => box.address)}
           defaults={composeDefaults}
           draftId={editingDraft?.id}

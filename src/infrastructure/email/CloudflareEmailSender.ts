@@ -20,7 +20,10 @@ type SendBinding = {
 };
 
 export class CloudflareEmailSender implements EmailSender {
-  constructor(private readonly binding: SendBinding) {}
+  constructor(
+    private readonly binding: SendBinding,
+    private readonly fromName: string,
+  ) {}
 
   async send(command: ComposeCommand): Promise<{ messageId: string }> {
     const to = command.to.map((item) => ({ email: item.address, name: item.name }));
@@ -28,7 +31,7 @@ export class CloudflareEmailSender implements EmailSender {
     const bcc = command.bcc.map((item) => ({ email: item.address, name: item.name }));
     const result = await this.binding.send({
       to,
-      from: { email: command.from.value, name: command.from.localPart() },
+      from: { email: command.from.value, name: this.fromName || command.from.localPart() },
       cc: cc.length ? cc : undefined,
       bcc: bcc.length ? bcc : undefined,
       subject: command.subject || "(no subject)",

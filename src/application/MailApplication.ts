@@ -19,6 +19,7 @@ export type MailRuntimeConfig = {
   domain: string;
   seedMailboxes: string[];
   appName: string;
+  fromDisplayName: string;
   vapid?: VapidKeys;
 };
 
@@ -41,6 +42,7 @@ export class MailApplication {
     return ok({
       identity,
       appName: this.config.appName,
+      fromDisplayName: this.config.fromDisplayName,
       domain: this.config.domain,
       mailboxes: mailboxes.map((box) => ({
         address: box.address.value,
@@ -58,7 +60,7 @@ export class MailApplication {
     return ok(await this.messages.list(query));
   }
 
-  async counts(mailbox: EmailAddress) {
+  async counts(mailbox?: EmailAddress) {
     return ok(await this.messages.counts(mailbox));
   }
 
@@ -122,7 +124,7 @@ export class MailApplication {
     const text = command.text || stripHtml(command.html);
     await this.messages.saveOutbound({
       mailbox: command.from,
-      from: { address: command.from.value, name: displayName(command.from) },
+      from: { address: command.from.value, name: this.config.fromDisplayName },
       to: command.to,
       cc: command.cc,
       bcc: command.bcc,
@@ -186,7 +188,7 @@ export class MailApplication {
     const now = Date.now();
     const payload = {
       mailbox: command.from,
-      from: { address: command.from.value, name: displayName(command.from) },
+      from: { address: command.from.value, name: this.config.fromDisplayName },
       to: command.to,
       cc: command.cc,
       bcc: command.bcc,
@@ -297,10 +299,6 @@ export class MailApplication {
 
 function titleCase(value: string) {
   return value.slice(0, 1).toUpperCase() + value.slice(1);
-}
-
-function displayName(address: EmailAddress) {
-  return titleCase(address.localPart());
 }
 
 function escapeHtml(value: string) {

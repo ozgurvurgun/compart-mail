@@ -36,9 +36,11 @@ export async function handleApi(
   }
 
   if (path === "/api/messages" && request.method === "GET") {
-    const mailbox = EmailAddress.parse(url.searchParams.get("mailbox") || "");
+    const mailboxParam = url.searchParams.get("mailbox") || "";
+    const allMailboxes = mailboxParam === "all";
+    const mailbox = allMailboxes ? undefined : EmailAddress.parse(mailboxParam);
     const folderRaw = url.searchParams.get("folder") || "inbox";
-    if (!mailbox) return json({ error: "Invalid mailbox" }, 400);
+    if (!allMailboxes && !mailbox) return json({ error: "Invalid mailbox" }, 400);
     if (folderRaw !== "starred" && !isFolder(folderRaw)) {
       return json({ error: "Invalid folder" }, 400);
     }

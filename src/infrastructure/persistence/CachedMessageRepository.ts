@@ -48,7 +48,7 @@ export class CachedMessageRepository implements MessageRepository {
   async list(query: MessageListQuery) {
     const q = query.q?.trim();
     if (q || query.cursor) return this.inner.list(query);
-    const key = listCacheKey(query.mailbox.value, query.folder);
+    const key = listCacheKey(query.mailbox?.value ?? "all", query.folder);
     const hit = await this.kv.getJson<{ items: MessageListItem[]; nextCursor: string | null }>(key);
     if (hit) return hit;
     const page = await this.inner.list(query);
@@ -56,8 +56,8 @@ export class CachedMessageRepository implements MessageRepository {
     return page;
   }
 
-  async counts(mailbox: EmailAddress) {
-    const key = `cnt:${mailbox.value}`;
+  async counts(mailbox?: EmailAddress) {
+    const key = `cnt:${mailbox?.value ?? "all"}`;
     const hit = await this.kv.getJson<Record<string, number>>(key);
     if (hit) return hit;
     const counts = await this.inner.counts(mailbox);
@@ -119,7 +119,9 @@ export class CachedMessageRepository implements MessageRepository {
   private invalidateMailbox(address: string) {
     return this.kv.deleteMany([
       `cnt:${address}`,
+      `cnt:all`,
       ...LIST_FOLDERS.map((folder) => listCacheKey(address, folder)),
+      ...LIST_FOLDERS.map((folder) => listCacheKey("all", folder)),
     ]);
   }
 }

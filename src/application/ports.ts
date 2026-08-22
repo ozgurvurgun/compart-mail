@@ -5,7 +5,7 @@ import type { Mailbox } from "../domain/mailbox/Mailbox";
 import type { Contact } from "../domain/contact/Contact";
 
 export type MessageListQuery = {
-  mailbox: EmailAddress;
+  mailbox?: EmailAddress;
   folder: Folder | "starred";
   q?: string;
   limit: number;
@@ -61,7 +61,7 @@ export interface MessageRepository {
   ensureMailbox(address: EmailAddress, displayName: string): Promise<void>;
   listMailboxes(): Promise<Mailbox[]>;
   list(query: MessageListQuery): Promise<{ items: MessageListItem[]; nextCursor: string | null }>;
-  counts(mailbox: EmailAddress): Promise<Record<string, number>>;
+  counts(mailbox?: EmailAddress): Promise<Record<string, number>>;
   get(id: string): Promise<Message | null>;
   saveInbound(input: NewInboundMessage): Promise<Message>;
   saveOutbound(input: NewInboundMessage & { folder: Folder }): Promise<Message>;

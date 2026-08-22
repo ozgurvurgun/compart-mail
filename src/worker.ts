@@ -22,6 +22,7 @@ export type Env = {
   MAIL_DOMAIN: string;
   SEED_MAILBOXES: string;
   APP_NAME: string;
+  FROM_DISPLAY_NAME?: string;
   CF_ACCESS_TEAM_DOMAIN?: string;
   CF_ACCESS_AUD?: string;
   VAPID_PUBLIC_KEY?: string;
@@ -34,7 +35,8 @@ function compose(env: Env) {
   const store = new R2ObjectStore(env.BUCKET);
   const messages = new CachedMessageRepository(new D1MessageRepository(env.DB, store), kv);
   const contacts = new CachedContactRepository(new D1ContactRepository(env.DB), kv);
-  const sender = new CloudflareEmailSender(env.EMAIL);
+  const fromDisplayName = env.FROM_DISPLAY_NAME || env.APP_NAME || "Compart Software";
+  const sender = new CloudflareEmailSender(env.EMAIL, fromDisplayName);
   const accessConfigured = Boolean(env.CF_ACCESS_TEAM_DOMAIN && env.CF_ACCESS_AUD);
   const auth = new AccessAuthenticator({
     teamDomain: env.CF_ACCESS_TEAM_DOMAIN || "",
@@ -47,6 +49,7 @@ function compose(env: Env) {
       .map((item) => item.trim())
       .filter(Boolean),
     appName: env.APP_NAME || "Mail",
+    fromDisplayName,
     vapid:
       env.VAPID_PUBLIC_KEY && env.VAPID_PRIVATE_KEY
         ? {

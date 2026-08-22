@@ -50,6 +50,7 @@
     "MAIL_DOMAIN": "compartsoftware.com",
     "SEED_MAILBOXES": "hello,contact,info,support",
     "APP_NAME": "Compart Mail",
+    "FROM_DISPLAY_NAME": "Compart Software",
     "CF_ACCESS_TEAM_DOMAIN": "morning-snowflake-05e9.cloudflareaccess.com",
     "CF_ACCESS_AUD": "9c055822a8a39ab4a958e82d48e95010032f39131d0f60780cc5d68a02e1d3f2",
     "VAPID_PUBLIC_KEY": "BO3ATKnWwhZkLZnqRimy2GkO_jOTftDnV4J5Ow4bkzbIY3zxIZN2HbhCUMGWw1Onm_kk6tYpp2gAJdoJOFEC2BM",
