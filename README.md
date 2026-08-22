@@ -190,7 +190,7 @@ D1: production data needs `--remote`. `npm run db:migrate*` already pass `--remo
 - Mutating requests require matching `Origin`
 - API: `Cache-Control: private, no-store`
 - CSP, HSTS, frame deny, nosniff
-- HTML bodies render in a sandboxed iframe (`allow-same-origin`, no scripts); height is measured from the document so marketing mail is not clipped
+- HTML bodies render in a sandboxed iframe (`allow-same-origin`, no scripts); height is measured from the document so marketing mail is not clipped; links open in a new tab
 - Attachment filenames sanitized before `Content-Disposition`
 
 ## Layout

@@ -863,6 +863,28 @@ function CloseIcon({ className }: { className?: string }) {
   );
 }
 
+function wireMessageLinks(doc: Document) {
+  const body = doc.body;
+  if (!body || (body as HTMLBodyElement & { __mailLinksWired?: boolean }).__mailLinksWired) return;
+  (body as HTMLBodyElement & { __mailLinksWired?: boolean }).__mailLinksWired = true;
+
+  body.querySelectorAll("a[href]").forEach((anchor) => {
+    const href = anchor.getAttribute("href") ?? "";
+    if (!href || href.startsWith("#")) return;
+    anchor.setAttribute("target", "_blank");
+    anchor.setAttribute("rel", "noopener noreferrer");
+  });
+
+  body.addEventListener("click", (event) => {
+    const anchor = (event.target as Element | null)?.closest("a[href]");
+    if (!(anchor instanceof HTMLAnchorElement)) return;
+    const href = anchor.getAttribute("href") ?? "";
+    if (!href || href.startsWith("#")) return;
+    event.preventDefault();
+    window.open(anchor.href, "_blank", "noopener,noreferrer");
+  });
+}
+
 function messageBodyHeight(doc: Document): number {
   const html = doc.documentElement;
   const body = doc.body;
@@ -884,6 +906,7 @@ function MessageBody({ html, text }: { html: string; text: string }) {
     const node = frame.current;
     const doc = node?.contentDocument;
     if (!node || !doc?.body) return;
+    wireMessageLinks(doc);
     const next = `${messageBodyHeight(doc)}px`;
     if (node.style.height !== next) node.style.height = next;
     doc.querySelectorAll("img").forEach((img) => {
@@ -938,7 +961,7 @@ function themedHtml(html: string, theme: Theme) {
     a { color: ${dark ? "#0a84ff" : "#007aff"}; }
     img { max-width: 100%; height: auto; }
   `;
-  return `<!doctype html><html><head><meta charset="utf-8"><style>${css}</style></head><body>${html}</body></html>`;
+  return `<!doctype html><html><head><meta charset="utf-8"><base target="_blank"><style>${css}</style></head><body>${html}</body></html>`;
 }
 
 function Compose({
