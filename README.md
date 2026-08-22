@@ -108,6 +108,17 @@ Dashboard: **Zero Trust → Access → Applications**
    - A selector of just `mail` matches nobody
 6. Save
 
+PWA chrome loads `/manifest.webmanifest` (and icons) **without** the Access cookie. Add a second self-hosted application for each public path, policy **Bypass** / Include **Everyone**:
+
+- `mail.compartsoftware.com/manifest.webmanifest`
+- `mail.compartsoftware.com/icons` (covers `/icons/*`)
+- `mail.compartsoftware.com/favicon.svg`
+- `mail.compartsoftware.com/apple-touch-icon.png`
+- `mail.compartsoftware.com/sw.js`
+- `mail.compartsoftware.com/theme-boot.js`
+
+The worker already serves those paths without a JWT. Without the Bypass apps, Access still 302s them to the login host and the page CSP (`manifest-src 'self'`) blocks the result.
+
 Then copy into `wrangler.jsonc` `vars`:
 
 - `CF_ACCESS_TEAM_DOMAIN` — `<team>.cloudflareaccess.com`

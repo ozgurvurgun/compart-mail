@@ -1,6 +1,6 @@
 import { MailApplication } from "./application/MailApplication";
 import { AccessAuthenticator } from "./infrastructure/auth/AccessAuthenticator";
-import { isAllowedHostname, requireAccessIdentity } from "./infrastructure/auth/requireAccess";
+import { isAllowedHostname, isPublicAsset, requireAccessIdentity } from "./infrastructure/auth/requireAccess";
 import { KvCache } from "./infrastructure/cache/KvCache";
 import { CloudflareEmailSender } from "./infrastructure/email/CloudflareEmailSender";
 import { handleApi } from "./infrastructure/http/handleApi";
@@ -79,6 +79,10 @@ export default {
 
     if (url.pathname.startsWith("/api/")) {
       return withSecurityHeaders(await handleApi(request, app, auth, ctx, { accessConfigured }), true);
+    }
+
+    if (isPublicAsset(url.pathname)) {
+      return withSecurityHeaders(await env.ASSETS.fetch(request));
     }
 
     const gate = await requireAccessIdentity(request, auth, accessConfigured);

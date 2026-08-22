@@ -2,8 +2,22 @@ import type { AccessAuthenticator } from "./AccessAuthenticator";
 
 export const MAIL_HOSTNAME = "mail.compartsoftware.com";
 
+const PUBLIC_ASSETS = new Set([
+  "/manifest.webmanifest",
+  "/favicon.svg",
+  "/apple-touch-icon.png",
+  "/sw.js",
+  "/theme-boot.js",
+]);
+
 export function isAllowedHostname(hostname: string): boolean {
   return hostname === MAIL_HOSTNAME;
+}
+
+/** PWA / chrome fetches these without Access cookies; do not gate them. */
+export function isPublicAsset(pathname: string): boolean {
+  if (PUBLIC_ASSETS.has(pathname)) return true;
+  return pathname.startsWith("/icons/");
 }
 
 export async function requireAccessIdentity(
