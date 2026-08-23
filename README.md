@@ -9,6 +9,7 @@ The UI is a React SPA. **Sign-in is Cloudflare Access only.** There is no in-app
 | Repo | [github.com/ozgurvurgun/compart-mail](https://github.com/ozgurvurgun/compart-mail) |
 | Compart | [mail.compartsoftware.com](https://mail.compartsoftware.com) (`compart-mail`) |
 | Shortena | [mail.shortena.com](https://mail.shortena.com) (`shortena-mail`, `wrangler` env `shortena`) |
+| Samka | [mail.samkamakina.com](https://mail.samkamakina.com) (`samka-mail`, `wrangler` env `samka`, Samet Kahraman CF account) |
 
 ## Day to day
 
@@ -27,15 +28,15 @@ git remote -v
 # origin  git@github.com-ozgurvurgun:ozgurvurgun/compart-mail.git
 ```
 
-Push to `main` → GitHub Actions builds once per job and deploys **both** `mail.compartsoftware.com` and `mail.shortena.com`. Same source, two `wrangler` environments. Local Shortena deploy: `npm run deploy:shortena`.
+Push to `main` → GitHub Actions builds once per job and deploys **Compart**, **Shortena**, and **Samka**. Same source, three `wrangler` environments. Local: `npm run deploy:shortena` / `npm run deploy:samka`.
 
-Do not commit `.vapid.json`, `tokenn.txt`, `node_modules`, or `dist`.
+Do not commit `.vapid.json`, `.vapid.samka.json`, `tokenn.txt`, `node_modules`, or `dist`.
 
 ## GitHub Actions (production deploy)
 
 Workflow: `.github/workflows/deploy.yml`
 
-Two jobs: `wrangler deploy` (Compart) and `wrangler deploy --env shortena`. Each job runs `npm ci` + `npm run build`.
+Three jobs: `wrangler deploy` (Compart), `wrangler deploy --env shortena`, `wrangler deploy --env samka`. Each job runs `npm ci` + `npm run build`.
 
 ### Secrets
 
@@ -45,6 +46,7 @@ Repo → **Settings → Secrets and variables → Actions**
 | --- | --- |
 | `CLOUDFLARE_API_TOKEN` | Compart, and Shortena if the other secret is empty |
 | `CLOUDFLARE_API_TOKEN_SHORTENA` | Optional. Use if `shortena.com` needs a different token |
+| `CLOUDFLARE_API_TOKEN_SAMKA` | Samet Kahraman account (`3102bf8d…`) for `mail.samkamakina.com` |
 
 A Shortena SaaS/SSL token is **not** enough (zone SSL only). Token needs:
 

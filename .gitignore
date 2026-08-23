@@ -1,4 +1,5 @@
 .vapid.json
+.vapid.samka.json
 dist
 node_modules
 .wrangler

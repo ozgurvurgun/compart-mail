@@ -41,3 +41,21 @@ jobs:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN_SHORTENA || secrets.CLOUDFLARE_API_TOKEN }}
           accountId: "08d6ee75890a687e032ba5439dd5e1ae"
           command: deploy --env shortena
+
+  samka:
+    name: mail.samkamakina.com
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v6
+        with:
+          node-version: "22"
+          cache: npm
+      - run: npm ci
+      - run: npm run build
+      - name: Deploy
+        uses: cloudflare/wrangler-action@v4
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN_SAMKA }}
+          accountId: "3102bf8d7ce2afd576d2c38f6e2b65c9"
+          command: deploy --env samka

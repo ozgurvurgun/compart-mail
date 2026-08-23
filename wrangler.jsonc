@@ -112,6 +112,56 @@
         "VAPID_PUBLIC_KEY": "BFQTWHPOG234RDBihs3JtSOgD6g6WpQzVReu_QTnH37cVUcTjyL1fwXbu-cu7awI3Acw5WiYeIj3s3UMlxRmx7s",
         "VAPID_SUBJECT": "mailto:support@shortena.com"
       }
+    },
+    "samka": {
+      "name": "samka-mail",
+      "account_id": "3102bf8d7ce2afd576d2c38f6e2b65c9",
+      "workers_dev": false,
+      "preview_urls": false,
+      "routes": [
+        { "pattern": "mail.samkamakina.com", "custom_domain": true }
+      ],
+      "d1_databases": [
+        {
+          "binding": "DB",
+          "database_name": "samka-mail",
+          "database_id": "808263d9-ebe2-4a9e-a560-1bd11d12f6a3"
+        }
+      ],
+      "kv_namespaces": [
+        {
+          "binding": "KV",
+          "id": "6da2d8796f3944fd8db1b6e3d2fc5269"
+        }
+      ],
+      "r2_buckets": [
+        {
+          "binding": "BUCKET",
+          "bucket_name": "samka-mail"
+        }
+      ],
+      "send_email": [
+        {
+          "name": "EMAIL",
+          "allowed_sender_addresses": [
+            "info@samkamakina.com",
+            "siparis@samkamakina.com",
+            "destek@samkamakina.com",
+            "noreply@samkamakina.com"
+          ]
+        }
+      ],
+      "vars": {
+        "MAIL_DOMAIN": "samkamakina.com",
+        "MAIL_HOSTNAME": "mail.samkamakina.com",
+        "SEED_MAILBOXES": "info,siparis,destek,noreply",
+        "APP_NAME": "Samka Mail",
+        "FROM_DISPLAY_NAME": "Samka Dikiş Makinaları",
+        "CF_ACCESS_TEAM_DOMAIN": "misty-art-23cc.cloudflareaccess.com",
+        "CF_ACCESS_AUD": "2490c9741f3f8d9b8ed9274d8033bbb4df48eb9ac59fd27b4d0feb64083705ef",
+        "VAPID_PUBLIC_KEY": "BHa4UV5EX-_KMw67TXnpPhoCG-c402womD1wSqjeL643tfjXYSGu-VRP3OIxMpKjZkrQ6YwBhyXFsgtV7--uQxU",
+        "VAPID_SUBJECT": "mailto:info@samkamakina.com"
+      }
     }
   }
 }
