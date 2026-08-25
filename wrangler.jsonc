@@ -162,6 +162,50 @@
         "VAPID_PUBLIC_KEY": "BHa4UV5EX-_KMw67TXnpPhoCG-c402womD1wSqjeL643tfjXYSGu-VRP3OIxMpKjZkrQ6YwBhyXFsgtV7--uQxU",
         "VAPID_SUBJECT": "mailto:info@samkamakina.com"
       }
+    },
+    "rheias": {
+      "name": "rheias-mail",
+      "workers_dev": false,
+      "preview_urls": false,
+      "routes": [
+        { "pattern": "mail.rheias.com", "custom_domain": true }
+      ],
+      "d1_databases": [
+        {
+          "binding": "DB",
+          "database_name": "rheias-mail",
+          "database_id": "e7f6ceeb-2c3f-433a-940b-5b2d345d482c"
+        }
+      ],
+      "kv_namespaces": [
+        {
+          "binding": "KV",
+          "id": "f6c95793b1214744824ab59373cf19e5"
+        }
+      ],
+      "r2_buckets": [
+        {
+          "binding": "BUCKET",
+          "bucket_name": "rheias-mail"
+        }
+      ],
+      "send_email": [
+        {
+          "name": "EMAIL",
+          "allowed_sender_addresses": ["hello@rheias.com"]
+        }
+      ],
+      "vars": {
+        "MAIL_DOMAIN": "rheias.com",
+        "MAIL_HOSTNAME": "mail.rheias.com",
+        "SEED_MAILBOXES": "hello",
+        "APP_NAME": "Compart Mail",
+        "FROM_DISPLAY_NAME": "Rheia's Art",
+        "CF_ACCESS_TEAM_DOMAIN": "morning-snowflake-05e9.cloudflareaccess.com",
+        "CF_ACCESS_AUD": "4436dd9efda8d10d89268867284b4826891c99e6b467d05d7a81b08bfceb0937",
+        "VAPID_PUBLIC_KEY": "BAHCVYyDs_f_bKc8UYvHEoJzi_ofQz7zsOGxk02o194dGojRU85aaJjCUe2Yr1uNqLgkJNZBVeXCKT2g4BW_UQI",
+        "VAPID_SUBJECT": "mailto:hello@rheias.com"
+      }
     }
   }
 }

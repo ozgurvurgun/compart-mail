@@ -165,6 +165,43 @@ export async function handleApi(
     return json(result.value);
   }
 
+  if (path === "/api/templates" && request.method === "GET") {
+    const limitRaw = url.searchParams.get("limit");
+    const limit = limitRaw ? Number(limitRaw) : undefined;
+    const result = await app.listTemplates(
+      url.searchParams.get("q") || undefined,
+      Number.isFinite(limit) ? limit : undefined,
+    );
+    return json(result.value);
+  }
+
+  if (path === "/api/templates" && request.method === "POST") {
+    const body = (await request.json()) as {
+      id?: string;
+      name?: string;
+      subject?: string;
+      html?: string;
+    };
+    const result = await app.saveTemplate({
+      id: typeof body.id === "string" ? body.id : undefined,
+      name: body.name || "",
+      subject: body.subject || "",
+      html: body.html || "",
+    });
+    return result.ok ? json(result.value) : json({ error: result.error }, 400);
+  }
+
+  const templateMatch = path.match(/^\/api\/templates\/([^/]+)$/);
+  if (templateMatch && request.method === "GET") {
+    const result = await app.getTemplate(templateMatch[1]);
+    return result.ok ? json(result.value) : json({ error: result.error }, 404);
+  }
+
+  if (templateMatch && request.method === "DELETE") {
+    const result = await app.removeTemplate(templateMatch[1]);
+    return result.ok ? json(result.value) : json({ error: result.error }, 404);
+  }
+
   const attMatch = path.match(/^\/api\/attachments\/([^/]+)$/);
   if (attMatch && request.method === "GET") {
     const result = await app.attachment(attMatch[1]);

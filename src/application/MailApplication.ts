@@ -11,6 +11,7 @@ import type {
   MessageListQuery,
   MessageRepository,
   ObjectStore,
+  TemplateRepository,
 } from "./ports";
 import type { PushStore } from "./pushPorts";
 import { sendWebPush, type VapidKeys } from "../infrastructure/push/sendWebPush";
@@ -27,6 +28,7 @@ export class MailApplication {
   constructor(
     private readonly messages: MessageRepository,
     private readonly contacts: ContactRepository,
+    private readonly templates: TemplateRepository,
     private readonly store: ObjectStore,
     private readonly sender: EmailSender,
     private readonly auth: Authenticator,
@@ -112,38 +114,42 @@ export class MailApplication {
       return err("Sender must belong to this domain");
     }
     if (command.to.length === 0) return err("At least one recipient is required");
-    if (!command.subject.trim() && !command.text.trim() && !command.html.trim()) {
+    const normalized = normalizeComposeBody(command);
+    if (!normalized.subject.trim() && !normalized.text.trim() && !normalized.html.trim()) {
       return err("Message is empty");
     }
 
-    const attachments = await this.collectAttachments(command);
-    const sent = await this.sender.send({ ...command, attachments: toBase64Payloads(attachments) });
+    const attachments = await this.collectAttachments(normalized);
+    const sent = await this.sender.send({
+      ...normalized,
+      attachments: toBase64Payloads(attachments),
+    });
     const now = Date.now();
     const id = crypto.randomUUID();
-    const html = command.html || `<pre>${escapeHtml(command.text)}</pre>`;
-    const text = command.text || stripHtml(command.html);
+    const html = normalized.html || `<pre>${escapeHtml(normalized.text)}</pre>`;
+    const text = normalized.text || stripHtml(normalized.html);
     await this.messages.saveOutbound({
-      mailbox: command.from,
-      from: { address: command.from.value, name: this.config.fromDisplayName },
-      to: command.to,
-      cc: command.cc,
-      bcc: command.bcc,
-      replyTo: command.from.value,
-      subject: command.subject,
+      mailbox: normalized.from,
+      from: { address: normalized.from.value, name: this.config.fromDisplayName },
+      to: normalized.to,
+      cc: normalized.cc,
+      bcc: normalized.bcc,
+      replyTo: normalized.from.value,
+      subject: normalized.subject,
       snippet: text.replace(/\s+/g, " ").slice(0, 240),
       html,
       text,
-      threadId: command.threadId || id,
+      threadId: normalized.threadId || id,
       internetMessageId: sent.messageId || `<${id}@${this.config.domain}>`,
-      inReplyTo: command.inReplyTo || "",
+      inReplyTo: normalized.inReplyTo || "",
       dateMs: now,
       sizeBytes: new TextEncoder().encode(html).byteLength,
       raw: new ArrayBuffer(0),
       attachments,
       folder: "sent",
     });
-    if (command.draftId) await this.messages.remove(command.draftId);
-    await this.rememberRecipients(command);
+    if (normalized.draftId) await this.messages.remove(normalized.draftId);
+    await this.rememberRecipients(normalized);
     return ok({ id, messageId: sent.messageId });
   }
 
@@ -182,40 +188,95 @@ export class MailApplication {
     if (command.from.domain() !== this.config.domain) {
       return err("Sender must belong to this domain");
     }
-    const html = command.html || (command.text ? `<pre>${escapeHtml(command.text)}</pre>` : "");
-    const text = command.text || stripHtml(command.html);
-    const snippet = text.replace(/\s+/g, " ").slice(0, 240) || command.subject.trim() || "Draft";
+    const normalized = normalizeComposeBody(command);
+    const html = normalized.html || (normalized.text ? `<pre>${escapeHtml(normalized.text)}</pre>` : "");
+    const text = normalized.text || stripHtml(normalized.html);
+    const snippet = text.replace(/\s+/g, " ").slice(0, 240) || normalized.subject.trim() || "Draft";
     const now = Date.now();
     const payload = {
-      mailbox: command.from,
-      from: { address: command.from.value, name: this.config.fromDisplayName },
-      to: command.to,
-      cc: command.cc,
-      bcc: command.bcc,
-      replyTo: command.from.value,
-      subject: command.subject,
+      mailbox: normalized.from,
+      from: { address: normalized.from.value, name: this.config.fromDisplayName },
+      to: normalized.to,
+      cc: normalized.cc,
+      bcc: normalized.bcc,
+      replyTo: normalized.from.value,
+      subject: normalized.subject,
       snippet,
       html,
       text,
-      threadId: command.threadId || crypto.randomUUID(),
+      threadId: normalized.threadId || crypto.randomUUID(),
       internetMessageId: "",
-      inReplyTo: command.inReplyTo || "",
+      inReplyTo: normalized.inReplyTo || "",
       dateMs: now,
       sizeBytes: new TextEncoder().encode(html || text).byteLength,
       raw: new ArrayBuffer(0),
-      attachments: command.attachments.map((file) => ({
+      attachments: normalized.attachments.map((file) => ({
         filename: file.filename,
         contentType: file.contentType,
         content: base64ToBuffer(file.contentBase64),
       })),
       folder: "drafts" as const,
     };
-    if (command.draftId) {
-      const updated = await this.messages.updateDraft(command.draftId, payload, command.keepAttachmentIds);
+    if (normalized.draftId) {
+      const updated = await this.messages.updateDraft(
+        normalized.draftId,
+        payload,
+        normalized.keepAttachmentIds,
+      );
       if (updated) return ok({ id: updated.id });
     }
     const saved = await this.messages.saveOutbound(payload);
     return ok({ id: saved.id });
+  }
+
+  async listTemplates(q?: string, limit?: number) {
+    const take = Math.min(Math.max(limit ?? 100, 1), 200);
+    const items = await this.templates.list(q, take);
+    return ok(
+      items.map((item) => ({
+        id: item.id,
+        name: item.name,
+        subject: item.subject,
+        html: item.html,
+        createdAt: item.createdAt,
+        updatedAt: item.updatedAt,
+      })),
+    );
+  }
+
+  async getTemplate(id: string) {
+    const item = await this.templates.get(id);
+    return item
+      ? ok({
+          id: item.id,
+          name: item.name,
+          subject: item.subject,
+          html: item.html,
+          createdAt: item.createdAt,
+          updatedAt: item.updatedAt,
+        })
+      : err("Not found");
+  }
+
+  async saveTemplate(input: { id?: string; name: string; subject: string; html: string }) {
+    try {
+      const item = await this.templates.save(input);
+      return ok({
+        id: item.id,
+        name: item.name,
+        subject: item.subject,
+        html: item.html,
+        createdAt: item.createdAt,
+        updatedAt: item.updatedAt,
+      });
+    } catch (error) {
+      return err(error instanceof Error ? error.message : "Could not save template");
+    }
+  }
+
+  async removeTemplate(id: string) {
+    const removed = await this.templates.remove(id);
+    return removed ? ok({ id }) : err("Not found");
   }
 
   private async collectAttachments(command: ComposeCommand) {
@@ -311,6 +372,28 @@ function escapeHtml(value: string) {
 
 function stripHtml(value: string) {
   return value.replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim();
+}
+
+/** Detect pasted HTML so Cloudflare Email sends text/html, not text/plain. */
+export function looksLikeHtml(value: string): boolean {
+  const v = value.trim();
+  if (!v) return false;
+  if (/^<!DOCTYPE\s+html/i.test(v) || /^<html[\s>]/i.test(v)) return true;
+  return /<(div|table|tr|td|th|p|br|h[1-6]|span|style|head|body|img|a|ul|ol|li|section|header|footer)\b/i.test(
+    v,
+  );
+}
+
+function normalizeComposeBody(command: ComposeCommand): ComposeCommand {
+  let html = (command.html || "").trim();
+  let text = (command.text || "").trim();
+  if (!html && text && looksLikeHtml(text)) {
+    html = text;
+    text = stripHtml(html);
+  } else if (html && !text) {
+    text = stripHtml(html);
+  }
+  return { ...command, html, text };
 }
 
 function base64ToBuffer(value: string) {

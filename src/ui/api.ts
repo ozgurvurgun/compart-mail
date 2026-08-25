@@ -37,6 +37,15 @@ export type Person = {
   name: string;
 };
 
+export type EmailTemplate = {
+  id: string;
+  name: string;
+  subject: string;
+  html: string;
+  createdAt: number;
+  updatedAt: number;
+};
+
 export type MessageDetail = MessageListItem & {
   cc: Array<{ address: string; name: string }>;
   bcc: Array<{ address: string; name: string }>;

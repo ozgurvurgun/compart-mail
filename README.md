@@ -10,6 +10,7 @@ The UI is a React SPA. **Sign-in is Cloudflare Access only.** There is no in-app
 | Compart | [mail.compartsoftware.com](https://mail.compartsoftware.com) (`compart-mail`) |
 | Shortena | [mail.shortena.com](https://mail.shortena.com) (`shortena-mail`, `wrangler` env `shortena`) |
 | Samka | [mail.samkamakina.com](https://mail.samkamakina.com) (`samka-mail`, `wrangler` env `samka`, Samet Kahraman CF account) |
+| Rheia | [mail.rheias.com](https://mail.rheias.com) (`rheias-mail`, `wrangler` env `rheias`) |
 
 ## Day to day
 
@@ -28,7 +29,7 @@ git remote -v
 # origin  git@github.com-ozgurvurgun:ozgurvurgun/compart-mail.git
 ```
 
-Push to `main` → GitHub Actions builds once per job and deploys **Compart**, **Shortena**, and **Samka**. Same source, three `wrangler` environments. Local: `npm run deploy:shortena` / `npm run deploy:samka`.
+Push to `main` → GitHub Actions builds once per job and deploys **Compart**, **Shortena**, **Samka**, and **Rheia**. Same source, four `wrangler` environments. Local: `npm run deploy:shortena` / `npm run deploy:samka` / `npm run deploy:rheias`.
 
 Do not commit `.vapid.json`, `.vapid.samka.json`, `tokenn.txt`, `node_modules`, or `dist`.
 
@@ -36,7 +37,7 @@ Do not commit `.vapid.json`, `.vapid.samka.json`, `tokenn.txt`, `node_modules`, 
 
 Workflow: `.github/workflows/deploy.yml`
 
-Three jobs: `wrangler deploy` (Compart), `wrangler deploy --env shortena`, `wrangler deploy --env samka`. Each job runs `npm ci` + `npm run build`.
+Four jobs: `wrangler deploy` (Compart), `wrangler deploy --env shortena`, `wrangler deploy --env samka`, `wrangler deploy --env rheias`. Each job runs `npm ci` + `npm run build`.
 
 ### Secrets
 

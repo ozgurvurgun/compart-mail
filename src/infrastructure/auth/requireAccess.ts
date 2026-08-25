@@ -22,10 +22,27 @@ export function isPublicAsset(pathname: string): boolean {
   return pathname.startsWith("/icons/");
 }
 
+function wantsHtml(request: Request): boolean {
+  if (request.method !== "GET" && request.method !== "HEAD") return false;
+  const mode = request.headers.get("sec-fetch-mode");
+  if (mode === "navigate") return true;
+  const accept = request.headers.get("accept") || "";
+  return accept.includes("text/html");
+}
+
+function accessLoginRedirect(request: Request, teamDomain: string): Response {
+  const url = new URL(request.url);
+  const redirectUrl = `${url.pathname}${url.search}` || "/";
+  const login = new URL(`https://${teamDomain}/cdn-cgi/access/login/${url.hostname}`);
+  login.searchParams.set("redirect_url", redirectUrl);
+  return Response.redirect(login.toString(), 302);
+}
+
 export async function requireAccessIdentity(
   request: Request,
   auth: AccessAuthenticator,
   accessConfigured: boolean,
+  teamDomain = "",
 ): Promise<{ ok: true; identity: { email: string; name?: string } } | { ok: false; response: Response }> {
   if (!accessConfigured) {
     return {
@@ -35,6 +52,10 @@ export async function requireAccessIdentity(
   }
   const identity = await auth.authenticate(request);
   if (!identity) {
+    // Browser navigations: send to Access login instead of a bare 401/403 Chrome error page.
+    if (teamDomain && wantsHtml(request)) {
+      return { ok: false, response: accessLoginRedirect(request, teamDomain) };
+    }
     return {
       ok: false,
       response: Response.json({ error: "Unauthorized" }, {

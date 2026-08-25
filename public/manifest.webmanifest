@@ -1,8 +1,8 @@
 {
   "id": "/",
-  "name": "Compart Mail",
-  "short_name": "Compart Mail",
-  "description": "Studio mail for Compart Software.",
+  "name": "__APP_NAME__",
+  "short_name": "__APP_NAME__",
+  "description": "__APP_DESCRIPTION__",
   "start_url": "/",
   "scope": "/",
   "display": "standalone",

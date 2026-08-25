@@ -26,7 +26,7 @@ self.addEventListener("fetch", (event) => {
 });
 
 self.addEventListener("push", (event) => {
-  let data = { title: "Compart Mail", body: "New message", url: "/", tag: "mail" };
+  let data = { title: "Mail", body: "New message", url: "/", tag: "mail" };
   try {
     if (event.data) data = { ...data, ...event.data.json() };
   } catch {

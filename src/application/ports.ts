@@ -3,6 +3,7 @@ import type { Folder } from "../domain/mailbox/Folder";
 import type { AddressHeader, AttachmentRef, Message } from "../domain/message/Message";
 import type { Mailbox } from "../domain/mailbox/Mailbox";
 import type { Contact } from "../domain/contact/Contact";
+import type { EmailTemplate } from "../domain/template/EmailTemplate";
 
 export type MessageListQuery = {
   mailbox?: EmailAddress;
@@ -83,6 +84,18 @@ export interface ContactRepository {
   remember(people: AddressHeader[], skip: Set<string>): Promise<number>;
   importRows(rows: AddressHeader[]): Promise<{ imported: number; skipped: number }>;
   remove(emails: string[]): Promise<number>;
+}
+
+export interface TemplateRepository {
+  list(q?: string, limit?: number): Promise<EmailTemplate[]>;
+  get(id: string): Promise<EmailTemplate | null>;
+  save(input: {
+    id?: string;
+    name: string;
+    subject: string;
+    html: string;
+  }): Promise<EmailTemplate>;
+  remove(id: string): Promise<boolean>;
 }
 
 export interface ObjectStore {

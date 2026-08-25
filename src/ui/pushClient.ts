@@ -30,7 +30,7 @@ export async function enablePush() {
     throw new Error("This browser cannot receive push alerts");
   }
   if (isIos() && !isStandalone()) {
-    throw new Error("On iPhone, add Compart Mail to the Home Screen first, then enable alerts.");
+    throw new Error("On iPhone, add this mail app to the Home Screen first, then enable alerts.");
   }
   const permission = await Notification.requestPermission();
   if (permission !== "granted") throw new Error("Alerts were not allowed");

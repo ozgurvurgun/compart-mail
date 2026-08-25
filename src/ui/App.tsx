@@ -17,12 +17,14 @@ import { AccessProblem } from "./AccessProblem";
 import { currentOrigin, signOutOfAccess } from "./access";
 import { CompartSeal } from "./CompartSeal";
 import { ProfileMenu } from "./ProfileMenu";
-import { Logo } from "./Logo";
+import { Logo, bootAppName } from "./Logo";
 import { MenuSelect } from "./MenuSelect";
 import { CheckBox } from "./CheckBox";
 import { ContactsPage } from "./ContactsPage";
+import { TemplatesPage } from "./TemplatesPage";
 import { AddressField } from "./AddressField";
 import { useTheme, setSidebarChrome, type Theme } from "./theme";
+import type { EmailTemplate } from "./api";
 
 const FOLDERS = [
   { id: "inbox", label: "Inbox", icon: InboxIcon },
@@ -101,6 +103,9 @@ export function App() {
   const [editingDraft, setEditingDraft] = useState<MessageDetail | null>(null);
   const [composeTo, setComposeTo] = useState("");
   const [peopleOpen, setPeopleOpen] = useState(false);
+  const [templatesOpen, setTemplatesOpen] = useState(false);
+  const [templatesQ, setTemplatesQ] = useState("");
+  const [composeSeed, setComposeSeed] = useState<{ subject: string; html: string } | null>(null);
   const [peopleQ, setPeopleQ] = useState("");
   const [pending, setPending] = useState<Pending>(null);
   const [drawerOpen, setDrawerOpen] = useState(false);
@@ -116,6 +121,8 @@ export function App() {
         setSession(data);
         setMailbox(pickMailbox(data.mailboxes));
         setAccessState("ok");
+        document.title = data.appName;
+        window.__MAIL_APP_NAME__ = data.appName;
       })
       .catch((err) => {
         setSession(null);
@@ -205,16 +212,32 @@ export function App() {
 
   const composeDefaults = useMemo(() => {
     if (editingDraft) {
+      const draftHtml = (editingDraft.html || "").trim();
+      const useHtml =
+        Boolean(draftHtml) &&
+        !/^<pre[\s>]/i.test(draftHtml) &&
+        /<(html|div|table|p|body)\b/i.test(draftHtml);
       return {
         to: editingDraft.to.map((item) => item.address).join(", "),
         cc: (editingDraft.cc ?? []).map((item) => item.address).join(", "),
         bcc: (editingDraft.bcc ?? []).map((item) => item.address).join(", "),
         subject: editingDraft.subject,
-        text: editingDraft.text,
+        text: useHtml ? "" : editingDraft.text,
+        html: useHtml ? draftHtml : "",
+      };
+    }
+    if (composeSeed) {
+      return {
+        to: composeTo,
+        cc: "",
+        bcc: "",
+        subject: composeSeed.subject,
+        text: "",
+        html: composeSeed.html,
       };
     }
     if (!reply) {
-      return { to: composeTo, cc: "", bcc: "", subject: "", text: "" };
+      return { to: composeTo, cc: "", bcc: "", subject: "", text: "", html: "" };
     }
     return {
       to: reply.from.address,
@@ -222,13 +245,15 @@ export function App() {
       bcc: "",
       subject: reply.subject.startsWith("Re:") ? reply.subject : `Re: ${reply.subject}`,
       text: "",
+      html: "",
     };
-  }, [reply, editingDraft, composeTo]);
+  }, [reply, editingDraft, composeTo, composeSeed]);
 
   function openCompose(nextReply: MessageDetail | null = null) {
     setReply(nextReply);
     setEditingDraft(null);
     setComposeTo("");
+    setComposeSeed(null);
     setComposeOpen(true);
   }
 
@@ -236,7 +261,19 @@ export function App() {
     setReply(null);
     setEditingDraft(null);
     setComposeTo(emails.slice(0, 80).join(", "));
+    setComposeSeed(null);
     setPeopleOpen(false);
+    setTemplatesOpen(false);
+    setComposeOpen(true);
+  }
+
+  function openComposeWithTemplate(template: EmailTemplate) {
+    setReply(null);
+    setEditingDraft(null);
+    setComposeTo("");
+    setComposeSeed({ subject: template.subject, html: template.html });
+    setPeopleOpen(false);
+    setTemplatesOpen(false);
     setComposeOpen(true);
   }
 
@@ -244,6 +281,7 @@ export function App() {
     setReply(null);
     setEditingDraft(message);
     setComposeTo("");
+    setComposeSeed(null);
     setComposeOpen(true);
   }
 
@@ -252,6 +290,7 @@ export function App() {
     setReply(null);
     setEditingDraft(null);
     setComposeTo("");
+    setComposeSeed(null);
   }
 
   function signOut() {
@@ -265,7 +304,7 @@ export function App() {
       <div className="grid h-full place-items-center bg-canvas">
         <div className="flex flex-col items-center gap-5">
           <div className="spinner" />
-          <Logo />
+          <Logo name={bootAppName()} />
           <p className="text-[13px] text-muted">Checking Cloudflare Access…</p>
         </div>
       </div>
@@ -290,31 +329,43 @@ export function App() {
           >
             <MenuIcon />
           </button>
-          <Logo />
-          <span className="sr-only">Mail</span>
+          <Logo name={session.appName} />
+          <span className="sr-only">{session.appName}</span>
         </div>
         <form
           className="mx-auto w-full max-w-[28rem]"
           onSubmit={(event) => {
             event.preventDefault();
-            if (!peopleOpen) void refresh();
+            if (!peopleOpen && !templatesOpen) void refresh();
           }}
         >
           <div className="relative">
             <SearchMark />
             <input
-              value={peopleOpen ? peopleQ : q}
-              onChange={(event) => (peopleOpen ? setPeopleQ(event.target.value) : setQ(event.target.value))}
-              placeholder={peopleOpen ? "Search" : "Search"}
-              aria-label={peopleOpen ? "Search people" : "Search mail"}
+              value={templatesOpen ? templatesQ : peopleOpen ? peopleQ : q}
+              onChange={(event) =>
+                templatesOpen
+                  ? setTemplatesQ(event.target.value)
+                  : peopleOpen
+                    ? setPeopleQ(event.target.value)
+                    : setQ(event.target.value)
+              }
+              placeholder="Search"
+              aria-label={
+                templatesOpen ? "Search templates" : peopleOpen ? "Search people" : "Search mail"
+              }
               className="ios-search"
             />
-            {(!peopleOpen && q) || (peopleOpen && peopleQ) ? (
+            {(!peopleOpen && !templatesOpen && q) ||
+            (peopleOpen && peopleQ) ||
+            (templatesOpen && templatesQ) ? (
               <button
                 type="button"
                 aria-label="Clear search"
                 className="absolute top-1/2 right-1.5 grid h-6 w-6 -translate-y-1/2 place-items-center rounded-full text-muted"
-                onClick={() => (peopleOpen ? setPeopleQ("") : setQ(""))}
+                onClick={() =>
+                  templatesOpen ? setTemplatesQ("") : peopleOpen ? setPeopleQ("") : setQ("")
+                }
               >
                 <CloseIcon className="h-3 w-3" />
               </button>
@@ -379,7 +430,7 @@ export function App() {
             {FOLDERS.map((item) => {
               const unread =
                 item.id === "starred" ? counts["starred:total"] : counts[`${item.id}:unread`];
-              const active = !peopleOpen && folder === item.id;
+              const active = !peopleOpen && !templatesOpen && folder === item.id;
               const Icon = item.icon;
               return (
                 <button
@@ -388,6 +439,7 @@ export function App() {
                   onClick={() => {
                     setFolder(item.id);
                     setPeopleOpen(false);
+                    setTemplatesOpen(false);
                     setSelectedId(null);
                     setPicked([]);
                     setDrawerOpen(false);
@@ -404,6 +456,7 @@ export function App() {
               type="button"
               onClick={() => {
                 setPeopleOpen(true);
+                setTemplatesOpen(false);
                 setSelectedId(null);
                 setPicked([]);
                 setDrawerOpen(false);
@@ -413,16 +466,34 @@ export function App() {
               <PeopleIcon />
               <span className="flex-1 text-left">Contacts</span>
             </button>
+            <button
+              type="button"
+              onClick={() => {
+                setTemplatesOpen(true);
+                setPeopleOpen(false);
+                setSelectedId(null);
+                setPicked([]);
+                setDrawerOpen(false);
+              }}
+              className={`source-item ${templatesOpen ? "active" : ""}`}
+            >
+              <TemplateIcon />
+              <span className="flex-1 text-left">Templates</span>
+            </button>
           </nav>
-          <div className="mailbox-seal-bar mt-auto shrink-0 overflow-visible border-t border-[color:var(--color-line)] px-3 pt-3 pb-2 lg:pb-4">
-            <div className="flex justify-center">
-              <CompartSeal />
+          {/^compart/i.test(session.appName) ? (
+            <div className="mailbox-seal-bar mt-auto shrink-0 overflow-visible border-t border-[color:var(--color-line)] px-3 pt-3 pb-2 lg:pb-4">
+              <div className="flex justify-center">
+                <CompartSeal />
+              </div>
             </div>
-          </div>
+          ) : null}
         </aside>
 
         {peopleOpen ? (
           <ContactsPage q={peopleQ} onCompose={openComposeTo} />
+        ) : templatesOpen ? (
+          <TemplatesPage q={templatesQ} onUse={openComposeWithTemplate} />
         ) : (
           <>
         <section className={`flex min-w-0 flex-col bg-surface shadow-[inset_-0.5px_0_0_var(--color-line)] lg:w-[23rem] lg:shrink-0 ${
@@ -710,14 +781,15 @@ export function App() {
         )}
       </div>
 
-      <nav className="tab-bar fixed inset-x-0 z-20 grid grid-cols-3 items-end px-2 lg:hidden">
+      <nav className="tab-bar fixed inset-x-0 z-20 grid grid-cols-4 items-end px-1 lg:hidden">
         <button
           type="button"
           className={`flex flex-col items-center gap-0 py-0 text-[9px] font-medium leading-none ${
-            !peopleOpen ? "text-accent" : "text-muted"
+            !peopleOpen && !templatesOpen ? "text-accent" : "text-muted"
           }`}
           onClick={() => {
             setPeopleOpen(false);
+            setTemplatesOpen(false);
             setSelectedId(null);
           }}
         >
@@ -739,11 +811,26 @@ export function App() {
           }`}
           onClick={() => {
             setPeopleOpen(true);
+            setTemplatesOpen(false);
             setSelectedId(null);
           }}
         >
           <PeopleIcon className="h-[18px] w-[18px]" />
           Contacts
+        </button>
+        <button
+          type="button"
+          className={`flex flex-col items-center gap-0 py-0 text-[9px] font-medium leading-none ${
+            templatesOpen ? "text-accent" : "text-muted"
+          }`}
+          onClick={() => {
+            setTemplatesOpen(true);
+            setPeopleOpen(false);
+            setSelectedId(null);
+          }}
+        >
+          <TemplateIcon className="h-[18px] w-[18px]" />
+          Templates
         </button>
       </nav>
 
@@ -993,7 +1080,7 @@ function Compose({
 }: {
   from: string;
   mailboxes: string[];
-  defaults: { to: string; cc: string; bcc: string; subject: string; text: string };
+  defaults: { to: string; cc: string; bcc: string; subject: string; text: string; html: string };
   draftId?: string;
   savedAttachments: Array<{ id: string; filename: string }>;
   replyId?: string;
@@ -1007,7 +1094,11 @@ function Compose({
   const [cc, setCc] = useState(defaults.cc);
   const [bcc, setBcc] = useState(defaults.bcc);
   const [subject, setSubject] = useState(defaults.subject);
+  const [mode, setMode] = useState<"text" | "html">(defaults.html.trim() ? "html" : "text");
   const [text, setText] = useState(defaults.text);
+  const [html, setHtml] = useState(defaults.html);
+  const [htmlPreview, setHtmlPreview] = useState(Boolean(defaults.html.trim()));
+  const [templates, setTemplates] = useState<EmailTemplate[]>([]);
   const [kept, setKept] = useState(savedAttachments);
   const [files, setFiles] = useState<File[]>([]);
   const [busy, setBusy] = useState<"save" | "send" | "">("");
@@ -1015,6 +1106,12 @@ function Compose({
   const [dirty, setDirty] = useState(false);
   const [askClose, setAskClose] = useState(false);
   const fileInput = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    void api<EmailTemplate[]>("/api/templates?limit=50")
+      .then(setTemplates)
+      .catch(() => setTemplates([]));
+  }, []);
 
   function touch<T>(setter: (value: T) => void) {
     return (value: T) => {
@@ -1033,7 +1130,7 @@ function Compose({
       cc,
       bcc,
       subject,
-      text,
+      ...(mode === "html" ? { html, text: "" } : { text, html: "" }),
       inReplyTo: replyId,
       threadId,
       draftId,
@@ -1127,13 +1224,97 @@ function Compose({
               className="field"
             />
           </Field>
+          <div className="flex flex-wrap items-center gap-2 px-5 py-2 shadow-[inset_0_-0.5px_0_var(--color-line)]">
+            <button
+              type="button"
+              className={`rounded-full px-3 py-1 text-[13px] font-medium ${
+                mode === "text" ? "bg-[var(--fill)] text-ink" : "text-muted"
+              }`}
+              onClick={() => {
+                setDirty(true);
+                setMode("text");
+              }}
+            >
+              Plain
+            </button>
+            <button
+              type="button"
+              className={`rounded-full px-3 py-1 text-[13px] font-medium ${
+                mode === "html" ? "bg-[var(--fill)] text-ink" : "text-muted"
+              }`}
+              onClick={() => {
+                setDirty(true);
+                setMode("html");
+              }}
+            >
+              HTML
+            </button>
+            {mode === "html" ? (
+              <button
+                type="button"
+                className="rounded-full px-3 py-1 text-[13px] font-medium text-muted"
+                onClick={() => setHtmlPreview((value) => !value)}
+              >
+                {htmlPreview ? "Code" : "Preview"}
+              </button>
+            ) : null}
+            {templates.length > 0 ? (
+              <select
+                className="ml-auto max-w-[12rem] truncate rounded-full bg-[var(--fill)] px-3 py-1 text-[13px] text-ink outline-none"
+                defaultValue=""
+                aria-label="Insert template"
+                onChange={(event) => {
+                  const id = event.target.value;
+                  event.target.value = "";
+                  const template = templates.find((item) => item.id === id);
+                  if (!template) return;
+                  setDirty(true);
+                  setMode("html");
+                  setHtml(template.html);
+                  setHtmlPreview(true);
+                  if (template.subject && !subject.trim()) setSubject(template.subject);
+                }}
+              >
+                <option value="" disabled>
+                  Template…
+                </option>
+                {templates.map((item) => (
+                  <option key={item.id} value={item.id}>
+                    {item.name}
+                  </option>
+                ))}
+              </select>
+            ) : null}
+          </div>
         </div>
-        <textarea
-          value={text}
-          onChange={(event) => touch(setText)(event.target.value)}
-          className="min-h-0 flex-1 resize-none border-0 bg-transparent px-5 py-4 text-[17px] leading-relaxed outline-none"
-          placeholder="Message"
-        />
+        {mode === "html" ? (
+          htmlPreview ? (
+            <iframe
+              title="HTML preview"
+              sandbox=""
+              srcDoc={
+                html ||
+                "<p style='font-family:sans-serif;color:#6b7280;padding:24px'>HTML preview</p>"
+              }
+              className="min-h-0 w-full flex-1 border-0 bg-white"
+            />
+          ) : (
+            <textarea
+              value={html}
+              onChange={(event) => touch(setHtml)(event.target.value)}
+              className="min-h-0 flex-1 resize-none border-0 bg-transparent px-5 py-4 font-mono text-[13px] leading-relaxed outline-none"
+              placeholder="Paste HTML email…"
+              spellCheck={false}
+            />
+          )
+        ) : (
+          <textarea
+            value={text}
+            onChange={(event) => touch(setText)(event.target.value)}
+            className="min-h-0 flex-1 resize-none border-0 bg-transparent px-5 py-4 text-[17px] leading-relaxed outline-none"
+            placeholder="Message"
+          />
+        )}
         {kept.length || files.length ? (
           <div className="flex flex-wrap gap-2 px-5 py-3 shadow-[inset_0_0.5px_0_var(--color-line)]">
             {kept.map((file) => (
@@ -1246,6 +1427,15 @@ function PeopleIcon({ className }: { className?: string }) {
       <path d="M2.4 12.4c.3-2.2 1.7-3.4 3.6-3.4s3.3 1.2 3.6 3.4" fill="none" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" />
       <circle cx="11.2" cy="6" r="1.7" fill="none" stroke="currentColor" strokeWidth="1.3" />
       <path d="M10 12.4c.2-1.5 1.1-2.4 2.4-2.4 1.3 0 2.2.8 2.5 2.2" fill="none" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" />
+    </svg>
+  );
+}
+
+function TemplateIcon({ className }: { className?: string }) {
+  return (
+    <svg viewBox="0 0 16 16" className={`h-4 w-4 ${className || ""}`} aria-hidden="true">
+      <rect x="2.5" y="2.5" width="11" height="11" rx="1.5" fill="none" stroke="currentColor" strokeWidth="1.3" />
+      <path d="M2.5 5.5h11M5.5 5.5v8" fill="none" stroke="currentColor" strokeWidth="1.3" />
     </svg>
   );
 }
