@@ -120,10 +120,16 @@ export class MailApplication {
     }
 
     const attachments = await this.collectAttachments(normalized);
-    const sent = await this.sender.send({
-      ...normalized,
-      attachments: toBase64Payloads(attachments),
-    });
+    let sent: { messageId: string };
+    try {
+      sent = await this.sender.send({
+        ...normalized,
+        attachments: toBase64Payloads(attachments),
+      });
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Send failed";
+      return err(message.includes("send") ? message : `Send failed: ${message}`);
+    }
     const now = Date.now();
     const id = crypto.randomUUID();
     const html = normalized.html || `<pre>${escapeHtml(normalized.text)}</pre>`;
@@ -393,7 +399,7 @@ function normalizeComposeBody(command: ComposeCommand): ComposeCommand {
   } else if (html && !text) {
     text = stripHtml(html);
   }
-  return { ...command, html, text };
+  return { ...command, html, text, attachments: command.attachments ?? [] };
 }
 
 function base64ToBuffer(value: string) {

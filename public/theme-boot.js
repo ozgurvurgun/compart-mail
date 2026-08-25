@@ -22,6 +22,11 @@
     if (meta) meta.setAttribute("content", color);
     var bar = document.querySelector('meta[name="apple-mobile-web-app-status-bar-style"]');
     if (bar) bar.setAttribute("content", theme === "light" ? "default" : "black-translucent");
+    var appName = document.querySelector('meta[name="application-name"]');
+    if (appName) {
+      var name = (appName.getAttribute("content") || "").trim();
+      if (name && name !== "__APP_NAME__") window.__MAIL_APP_NAME__ = name;
+    }
   } catch (e) {
     document.documentElement.setAttribute("data-theme", "dark");
   }

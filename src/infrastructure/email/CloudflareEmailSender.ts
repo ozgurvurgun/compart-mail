@@ -40,12 +40,12 @@ export class CloudflareEmailSender implements EmailSender {
       headers: command.inReplyTo
         ? { "In-Reply-To": command.inReplyTo, References: command.inReplyTo }
         : undefined,
-      attachments: command.attachments.map((file) => ({
+      attachments: command.attachments?.map((file) => ({
         content: file.contentBase64,
         filename: file.filename,
         type: file.contentType,
         disposition: "attachment",
-      })),
+      })) ?? [],
     });
     return { messageId: result.messageId || crypto.randomUUID() };
   }
