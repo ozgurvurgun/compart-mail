@@ -147,17 +147,14 @@
             "info@samkamakina.com",
             "siparis@samkamakina.com",
             "destek@samkamakina.com",
-            "noreply@samkamakina.com",
-            "bilgi@samkamakina.com",
-            "sametkahraman@samkamakina.com",
-            "mustafakahraman@samkamakina.com"
+            "noreply@samkamakina.com"
           ]
         }
       ],
       "vars": {
         "MAIL_DOMAIN": "samkamakina.com",
         "MAIL_HOSTNAME": "mail.samkamakina.com",
-        "SEED_MAILBOXES": "info,siparis,destek,noreply,bilgi,sametkahraman,mustafakahraman",
+        "SEED_MAILBOXES": "info,siparis,destek,noreply",
         "APP_NAME": "Compart Mail",
         "FROM_DISPLAY_NAME": "Samka Dikiş Makinaları",
         "CF_ACCESS_TEAM_DOMAIN": "misty-art-23cc.cloudflareaccess.com",
