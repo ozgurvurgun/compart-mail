@@ -32,6 +32,13 @@ export type Env = {
   VAPID_SUBJECT?: string;
 };
 
+function seedLocals(env: Env): string[] {
+  return (env.SEED_MAILBOXES || "hello")
+    .split(",")
+    .map((item) => item.trim().toLowerCase())
+    .filter(Boolean);
+}
+
 function appBranding(env: Env) {
   const appName = (env.APP_NAME || "Mail").trim() || "Mail";
   const domain = (env.MAIL_DOMAIN || "example.com").trim();
@@ -46,7 +53,6 @@ function applyBranding(source: string, env: Env) {
   let out = source
     .replaceAll("__APP_NAME__", appName)
     .replaceAll("__APP_DESCRIPTION__", description);
-  // Keep build-time "Compart Mail" when env APP_NAME is unset (defaults to "Mail").
   if (appName !== "Mail") {
     out = out.replaceAll("Compart Mail", appName);
   }
@@ -80,7 +86,8 @@ function compose(env: Env) {
   const messages = new CachedMessageRepository(new D1MessageRepository(env.DB, store), kv);
   const contacts = new CachedContactRepository(new D1ContactRepository(env.DB), kv);
   const templates = new D1TemplateRepository(env.DB);
-  const fromDisplayName = env.FROM_DISPLAY_NAME || env.APP_NAME || "Compart Software";
+  const locals = seedLocals(env);
+  const fromDisplayName = (env.FROM_DISPLAY_NAME || env.APP_NAME || "Mail").trim() || "Mail";
   const sender = new CloudflareEmailSender(env.EMAIL, fromDisplayName);
   const accessConfigured = Boolean(env.CF_ACCESS_TEAM_DOMAIN && env.CF_ACCESS_AUD);
   const auth = new AccessAuthenticator({
@@ -97,10 +104,7 @@ function compose(env: Env) {
     new D1PushStore(env.DB),
     {
       domain: env.MAIL_DOMAIN,
-      seedMailboxes: (env.SEED_MAILBOXES || "hello,contact,info,support")
-        .split(",")
-        .map((item) => item.trim())
-        .filter(Boolean),
+      seedMailboxes: locals,
       appName: env.APP_NAME || "Mail",
       fromDisplayName,
       vapid:
@@ -108,7 +112,7 @@ function compose(env: Env) {
           ? {
               publicKey: env.VAPID_PUBLIC_KEY,
               privateKey: env.VAPID_PRIVATE_KEY,
-              subject: env.VAPID_SUBJECT || "mailto:hello@compartsoftware.com",
+              subject: env.VAPID_SUBJECT || `mailto:${locals[0] || "hello"}@${env.MAIL_DOMAIN}`,
             }
           : undefined,
     },
@@ -124,7 +128,6 @@ export default {
       return new Response("Not found", { status: 404 });
     }
 
-    // run_worker_first intercepts /cdn-cgi/access/*; forward to the Access team host.
     if (url.pathname.startsWith("/cdn-cgi/access/")) {
       const team = env.CF_ACCESS_TEAM_DOMAIN;
       if (!team) return new Response("Not found", { status: 404 });

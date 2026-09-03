@@ -16,7 +16,6 @@ export function isAllowedHostname(hostname: string, allowed: string): boolean {
   return hostname === allowed;
 }
 
-/** PWA / chrome fetches these without Access cookies; do not gate them. */
 export function isPublicAsset(pathname: string): boolean {
   if (PUBLIC_ASSETS.has(pathname)) return true;
   return pathname.startsWith("/icons/");
@@ -52,7 +51,6 @@ export async function requireAccessIdentity(
   }
   const identity = await auth.authenticate(request);
   if (!identity) {
-    // Browser navigations: send to Access login instead of a bare 401/403 Chrome error page.
     if (teamDomain && wantsHtml(request)) {
       return { ok: false, response: accessLoginRedirect(request, teamDomain) };
     }

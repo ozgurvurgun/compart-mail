@@ -1,8 +1,3 @@
-/**
- * Verifies Cloudflare Access JWTs (CF-Access-Jwt-Assertion / CF_Authorization).
- * Spec: https://developers.cloudflare.com/cloudflare-one/identity/authorization-cookie/validating-json/
- */
-
 export interface AccessIdentity {
   readonly email: string;
   readonly sub: string;

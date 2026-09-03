@@ -380,7 +380,6 @@ function stripHtml(value: string) {
   return value.replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim();
 }
 
-/** Detect pasted HTML so Cloudflare Email sends text/html, not text/plain. */
 export function looksLikeHtml(value: string): boolean {
   const v = value.trim();
   if (!v) return false;

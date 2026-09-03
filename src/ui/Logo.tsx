@@ -8,7 +8,6 @@ function resolveName(name?: string) {
   return (name || (typeof window !== "undefined" ? window.__MAIL_APP_NAME__ : "") || "Mail").trim();
 }
 
-/** Boot splash reads branding injected by the worker into index.html. */
 export function bootAppName(): string | undefined {
   if (typeof document === "undefined") return undefined;
   const fromWindow = window.__MAIL_APP_NAME__?.trim();

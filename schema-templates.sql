@@ -1,5 +1,3 @@
--- HTML email templates (shared across mailboxes).
-
 CREATE TABLE IF NOT EXISTS email_templates (
   id TEXT PRIMARY KEY,
   name TEXT NOT NULL,

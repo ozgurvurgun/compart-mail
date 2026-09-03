@@ -1,5 +1,3 @@
--- Cloudflare Mail persistence. SQLite / D1.
-
 CREATE TABLE IF NOT EXISTS mailboxes (
   address TEXT PRIMARY KEY,
   display_name TEXT NOT NULL,

@@ -1,5 +1,5 @@
 .vapid.json
-.vapid.samka.json
+.vapid.*.json
 dist
 node_modules
 .wrangler
